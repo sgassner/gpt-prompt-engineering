@@ -56,7 +56,7 @@ ask_gpt <- function(prompt) {
 #------------------------------------------------------------------------------#
 
 # Jeden Post mit GPT klassifizieren
-for (i in 1:100) {
+for (i in 1:length(input_data_gpt$prompt)) {
   # Completion als Character speichern
   compl <- as.character(ask_gpt(input_data_gpt$prompt[i]))
   # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
