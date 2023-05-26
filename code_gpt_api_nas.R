@@ -61,16 +61,11 @@ interruptor <- function(FUN, args, time.limit) {
   results <- tryCatch({
     withTimeout({ FUN(args) }, timeout = time.limit)
   }, TimeoutException = function(e) {
-    "Zeitlimit erreicht"
+    "Zeitlimit erreicht" # Return bei erreichen des Zeitlimits
   }, error = function(e) {
-    paste(e$message, "EXTRACTERROR")
+    "Fehler" # Return bei anderen Errors
   })
-  
-  if (grepl("EXTRACTERROR", results)) {
-    print(gsub("EXTRACTERROR", "", results))
-    results <- "Zeitlimit erreicht"
-  }
-  
+
   return(results)
 }
 
