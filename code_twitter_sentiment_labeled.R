@@ -255,7 +255,7 @@ ask_gpt <- function(prompt) {
                    encode = "json",
                    body = list(model = "gpt-3.5-turbo",
                                max_tokens = 10,
-                               temperature = 0.3,
+                               temperature = 0,
                                messages = list(list(role = "user",
                                                     content = prompt
                                ))
@@ -271,9 +271,6 @@ ask_gpt <- function(prompt) {
     "Keine Antwort von API"
   }
 }
-
-# Prompt Funktion erstellen (mit Zeitlimit pro Tweet)
-
 
 #------------------------------------------------------------------------------#
 # GPT (0S)
