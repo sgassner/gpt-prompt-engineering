@@ -70,7 +70,7 @@ for (i in 1:100) {
 #------------------------------------------------------------------------------#
 
 # CSV erstellen
-write_csv(input_data_gpt, "output_data_gpt.csv")
+write.csv(input_data_gpt, "output_data_gpt.csv")
 
 # Die weitere Bearbeitung und Analyse erfolgt lokal
 # Siehe R-Skript: code_twitter_sentiment.R
