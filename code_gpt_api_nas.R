@@ -13,6 +13,7 @@ setwd("~/local/lib/R/MA")
 # Packages laden
 library(httr)
 library(stringr)
+library(R.utils) # für Zeitlimit der Prompts
 
 #------------------------------------------------------------------------------#
 # Datensatz mit Prompts laden
@@ -34,7 +35,7 @@ ask_gpt <- function(prompt) {
                    encode = "json",
                    body = list(model = "gpt-3.5-turbo",
                                max_tokens = 10,
-                               temperature = 0.3,
+                               temperature = 0,
                                messages = list(list(role = "user",
                                                     content = prompt
                                ))
@@ -52,13 +53,37 @@ ask_gpt <- function(prompt) {
 }
 
 #------------------------------------------------------------------------------#
+# Funktion erstellen um langsame Abfragen zu überspringen
+#------------------------------------------------------------------------------#
+
+# Falls Laufzeit > time.limit --> "Zeitlimit erreicht" retournieren
+interruptor <- function(FUN, args, time.limit) {
+  results <- tryCatch({
+    withTimeout({ FUN(args) }, timeout = time.limit)
+  }, TimeoutException = function(e) {
+    "Zeitlimit erreicht"
+  }, error = function(e) {
+    paste(e$message, "EXTRACTERROR")
+  })
+  
+  if (grepl("EXTRACTERROR", results)) {
+    print(gsub("EXTRACTERROR", "", results))
+    results <- "Zeitlimit erreicht"
+  }
+  
+  return(results)
+}
+
+#------------------------------------------------------------------------------#
 # Sentiment Analyse mit GPT
 #------------------------------------------------------------------------------#
 
 # Jeden Post mit GPT klassifizieren
 for (i in 1:length(input_data_gpt$prompt)) {
-  # Completion als Character speichern
-  compl <- as.character(ask_gpt(input_data_gpt$prompt[i]))
+  # Completion als Character speichern (Zeitlimit = 5 Sekunden)
+  compl <- as.character(interruptor(FUN = ask_gpt, 
+                                    args = input_data_gpt$prompt[i],
+                                    time.limit = 5))
   # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
   print(paste(i, compl))
   # Completion im Data Frame speichern
