@@ -61,9 +61,9 @@ interruptor <- function(FUN, args, time.limit) {
   results <- tryCatch({
     withTimeout({ FUN(args) }, timeout = time.limit)
   }, TimeoutException = function(e) {
-    "Zeitlimit erreicht" # Return bei erreichen des Zeitlimits
+    "Zeitlimit erreicht"
   }, error = function(e) {
-    "Fehler" # Return bei anderen Errors
+    "Zeitlimit erreicht"
   })
 
   return(results)
