@@ -12,17 +12,11 @@ setwd("~/Documents/R/MA")
 
 # Packages laden
 library(tidyverse)
-library(devtools) # Installation von Packages auf Github
 library(httr) # Zugriff auf das OpenAI API
 library(cld2) # Sprachermittlung der Posts
 library(tidytext) # NLP Funktionen
 library(textdata) # NLP Funktionen
 library(SnowballC) # Stemming
-library(corrplot) # Korrelationsplot
-library(stargazer) # für Regressions-Outputs
-library(knitr)
-library(openxlsx)
-library(zoo)
 
 ################################################################################
 ### Daten laden
