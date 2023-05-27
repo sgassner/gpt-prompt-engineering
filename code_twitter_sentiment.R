@@ -80,7 +80,7 @@ data_rf <- read.csv("riskfree_rate.csv")
 ################################################################################
 
 #------------------------------------------------------------------------------#
-# Twitter Daten bereinigen
+# Twitter Daten bereinigen für GPT Ansatz
 #------------------------------------------------------------------------------#
 
 # Struktur und Zusammenfassung der Daten
@@ -98,6 +98,20 @@ data_twitter$post_date <- as.Date(data_twitter$post_date, "%Y-%m-%d")
 # Aufsteigend nach Datum sortieren
 data_twitter <- data_twitter %>% arrange(post_date)
 
+# Sprachermittlung der Posts
+data_twitter$language <- detect_language(data_twitter$body, plain_text = TRUE)
+
+# Englischsprachige Posts herausfiltern
+data_twitter <- data_twitter %>% filter(language == "en")
+data_twitter <- select(data_twitter, -language)
+
+# Als Datensatz für GPT speichern
+data_gpt <- data_twitter
+
+#------------------------------------------------------------------------------#
+# Twitter Daten weiter bereinigen für konventionelle Methoden
+#------------------------------------------------------------------------------#
+
 # URLs entfernen
 data_twitter$body <- gsub("(https?://)?(www\\.)?\\S+\\.\\S+", "", 
                           data_twitter$body)
@@ -110,13 +124,6 @@ data_twitter$body <- gsub("\\$([A-Za-z]+)", "\\1", data_twitter$body)
 
 # Markierungen von Personen (@XYZ) entfernen
 data_twitter$body <- gsub("@\\S+", "", data_twitter$body)
-
-# Sprachermittlung der Posts
-data_twitter$language <- detect_language(data_twitter$body, plain_text = TRUE)
-
-# Englischsprachige Posts herausfiltern
-data_twitter <- data_twitter %>% filter(language == "en")
-data_twitter <- select(data_twitter, -language)
 
 # Doppelte Leerzeichen entfernen
 data_twitter$body <- gsub("  ", " ", data_twitter$body)
@@ -402,24 +409,24 @@ ggplot(bing_AAPL_pos, aes(x = post_date, y = n)) +
 prompt_task <- "The following tweet contains an opinion on a stock, a company, a product, or the market. Classify the tweet into positive, negative, or neutral. Only return positive, negative, or neutral."
 
 # Spalte für Prompts erstellen
-data_twitter$prompt <- NA
+data_gpt$prompt <- NA
 
 # Prompt für jeden Tweet erstellen
-data_twitter$prompt_tweet <- paste0("Tweet about ", 
-                                    data_twitter$ticker_symbol, 
+data_gpt$prompt_tweet <- paste0("Tweet about ", 
+                                data_gpt$ticker_symbol, 
                                     ": ", 
-                                    data_twitter$body)
-data_twitter$prompt <- paste(prompt_task, 
-                             data_twitter$prompt_tweet, 
+                                data_gpt$body)
+data_gpt$prompt <- paste(prompt_task, 
+                         data_gpt$prompt_tweet, 
                              "Sentiment:",
                              sep = "\n")
 
 # Spalte für GPT Klassifikation erstellen
-data_twitter$completion <- NA
+data_gpt$completion <- NA
 
 # Datensatz mit relevanten Spalten für GPT speichern
-data_gpt <- data_twitter %>% select(c("tweet_id", "post_date","prompt", 
-                                      "completion"))
+data_gpt <- data_gpt %>% select(c("tweet_id", "post_date","prompt", 
+                                  "completion"))
 write_csv(data_gpt, "input_data_gpt.csv")
 
 # Die Analyse mit GPT wird mit einem anderen Skript auf dem NAS durchgeführt
@@ -670,4 +677,16 @@ stargazer(ols_bing_list, type="text", digits = 4)
 #------------------------------------------------------------------------------#
 # GPT + CAPM Regressionen
 #------------------------------------------------------------------------------#
+
+
+
+
+
+
+
+
+
+
+
+
 

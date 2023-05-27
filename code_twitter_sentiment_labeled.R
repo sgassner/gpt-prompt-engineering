@@ -17,9 +17,11 @@ library(cld2) # Sprachermittlung der Posts
 library(tidytext) # NLP Funktionen
 library(textdata) # NLP Funktionen
 library(SnowballC) # Stemming
+library(zoo)
+library(R.utils) # für Zeitlimit der Prompts
 
 ################################################################################
-### Daten laden
+### Daten laden für konventionelle Methoden
 ################################################################################
 
 # Gelabelte Tweets laden
@@ -29,7 +31,7 @@ data_labeled <- read.csv("tweets_aapl_labeled.csv")
 data_labeled <- as_tibble(data_labeled)
 
 ################################################################################
-### Bereinigung der Daten
+### Bereinigung der Daten für konventionelle Methoden
 ################################################################################
 
 # Struktur und Zusammenfassung der Daten
@@ -237,187 +239,7 @@ bing_sentiment_score_wide <-
 bing_label <- bing_sentiment_score_wide %>% select(c("ID", "bing_label"))
 
 ################################################################################
-### Sentiment Analysis with GPT
-################################################################################
-
-#------------------------------------------------------------------------------#
-# OpenAI API und Prompt-Funktion einrichten
-#------------------------------------------------------------------------------#
-
-# OpenAI API Key definieren
-api_key <- "KEY"
-
-# Prompt Funktion erstellen
-ask_gpt <- function(prompt) {
-  response <- POST(url = "https://api.openai.com/v1/chat/completions",
-                   add_headers(Authorization = paste("Bearer", api_key)),
-                   content_type_json(),
-                   encode = "json",
-                   body = list(model = "gpt-3.5-turbo",
-                               max_tokens = 10,
-                               temperature = 0,
-                               messages = list(list(role = "user",
-                                                    content = prompt
-                               ))
-                   )
-  )
-
-  # Falls Completion = 0 -> "Keine Antwort von API"
-  if (!is.null(content(response)$choices) &&
-      length(content(response)$choices) > 0) {
-    str_trim(content(response)$choices[[1]]$message$content)
-  } else {
-    # Text, falls Completion = 0
-    "Keine Antwort von API"
-  }
-}
-
-#------------------------------------------------------------------------------#
-# GPT (0S)
-#------------------------------------------------------------------------------#
-
-# Prompt definieren
-prompt_0s <- paste("The following tweet contains an opinion on a stock, a company, a product or the market. Classify the tweet into positive or negative. Only return positive or negative.",
-                   "Tweet about AAPL:", sep = "\n")
-
-# Tabelle mit Prompts erstellen
-gpt_sentiments <- data_labeled
-gpt_sentiments$prompt_0s <- paste(paste(prompt_0s, gpt_sentiments$text), 
-                                  "Sentiment:", sep = "\n")
-
-# Leere Spalte für GPT Klassifikation erstellen
-gpt_sentiments$completion_0s <- NA
-
-# Jeden Post mit GPT klassifizieren
-for (i in 1:length(gpt_sentiments$prompt_0s)) {
-  # Completion als Character speichern
-  compl <- as.character(ask_gpt(gpt_sentiments$prompt_0s[i]))
-  # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
-  print(paste(i, compl))
-  # Completion im Data Frame speichern
-  gpt_sentiments$completion_0s[i] <- compl
-}
-
-# Format der Completions anpassen
-gpt_sentiments$completion_0s <- tolower(gpt_sentiments$completion_0s)
-
-# Datensatz mit Completions speichern
-write_csv(gpt_sentiments, "gpt_sentiments_labeled_temp_00.csv")
-
-# Art der Completions anschauen
-unique(gpt_sentiments$completion_0s)
-
-# Positive und negative Klassifikationen herausfiltern
-gpt_0s_label <- gpt_sentiments %>% select(c("ID", "label", "completion_0s"))
-gpt_0s_label <- gpt_0s_label %>% 
-  filter(completion_0s %in% c("positive", "negative"))
-
-# Positive = 1, Negative = 0
-gpt_0s_label$completion_0s[gpt_0s_label$completion_0s == "positive"] <- 1
-gpt_0s_label$completion_0s[gpt_0s_label$completion_0s == "negative"] <- 0
-gpt_0s_label$completion_0s <- as.numeric(gpt_0s_label$completion_0s)
-
-#------------------------------------------------------------------------------#
-# GPT (1S)
-#------------------------------------------------------------------------------#
-
-# Prompt definieren
-prompt_1s <- paste("The following tweet contains an opinion on a stock, a company, a product or the market. Classify the tweet into positive or negative. Only return positive or negative.",
-                   "Tweet 1 about AAPL: I am bullish on Apple.",
-                   "Sentiment: positive",
-                   "##",
-                   "Tweet 2 about AAPL:",
-                   sep = "\n")
-
-# Spalte mit Prompts erstellen
-gpt_sentiments$prompt_1s <- paste(paste(prompt_1s, gpt_sentiments$text), 
-                                  "Sentiment:", sep = "\n")
-
-# Leere Spalte für GPT Klassifikation erstellen
-gpt_sentiments$completion_1s <- NA
-
-# Jeden Post mit GPT klassifizieren
-for (i in 1:length(gpt_sentiments$prompt_1s)) {
-  # Completion als Character speichern
-  compl <- as.character(ask_gpt(gpt_sentiments$prompt_1s[i]))
-  # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
-  print(paste(i, compl))
-  # Completion im Data Frame speichern
-  gpt_sentiments$completion_1s[i] <- compl
-}
-
-# Format der Completions anpassen
-gpt_sentiments$completion_1s <- tolower(gpt_sentiments$completion_1s)
-
-# Datensatz mit Completions speichern
-write_csv(gpt_sentiments, "gpt_sentiments_labeled.csv")
-
-# Art der Completions anschauen
-unique(gpt_sentiments$completion_1s)
-
-# Positive und negative Klassifikationen herausfiltern
-gpt_1s_label <- gpt_sentiments %>% select(c("ID", "label", "completion_1s"))
-gpt_1s_label <- gpt_1s_label %>% 
-  filter(completion_1s %in% c("positive", "negative"))
-
-# Positive = 1, Negative = 0
-gpt_1s_label$completion_1s[gpt_1s_label$completion_1s == "positive"] <- 1
-gpt_1s_label$completion_1s[gpt_1s_label$completion_1s == "negative"] <- 0
-gpt_1s_label$completion_1s <- as.numeric(gpt_1s_label$completion_1s)
-
-#------------------------------------------------------------------------------#
-# GPT (FS)
-#------------------------------------------------------------------------------#
-
-# Prompt definieren
-prompt_fs <- paste("The following tweet contains an opinion on a stock, a company, a product or the market. Classify the tweet into positive or negative. Only return positive or negative.",
-                   "Tweet 1 about AAPL: I am bullish on Apple.",
-                   "Sentiment: positive",
-                   "##",
-                   "Tweet 2 about AAPL: I hate the new iPhone 14.",
-                   "Sentiment: negative",
-                   "##",
-                   "Tweet 3 about AAPL:",
-                   sep = "\n")
-
-# Spalte mit Prompts erstellen
-gpt_sentiments$prompt_fs <- paste(paste(prompt_fs, gpt_sentiments$text), 
-                                  "Sentiment:", sep = "\n")
-
-# Leere Spalte für GPT Klassifikation erstellen
-gpt_sentiments$completion_fs <- NA
-
-# Jeden Post mit GPT klassifizieren
-for (i in 1:length(gpt_sentiments$prompt_fs)) {
-  # Completion als Character speichern
-  compl <- as.character(ask_gpt(gpt_sentiments$prompt_fs[i]))
-  # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
-  print(paste(i, compl))
-  # Completion im Data Frame speichern
-  gpt_sentiments$completion_fs[i] <- compl
-}
-
-# Format der Completions anpassen
-gpt_sentiments$completion_fs <- tolower(gpt_sentiments$completion_fs)
-
-# Datensatz mit Completions speichern
-write_csv(gpt_sentiments, "gpt_sentiments_labeled.csv")
-
-# Art der Completions anschauen
-unique(gpt_sentiments$completion_fs)
-
-# Positive und negative Klassifikationen herausfiltern
-gpt_fs_label <- gpt_sentiments %>% select(c("ID", "label", "completion_fs"))
-gpt_fs_label <- gpt_fs_label %>% 
-  filter(completion_fs %in% c("positive", "negative"))
-
-# Positive = 1, Negative = 0
-gpt_fs_label$completion_fs[gpt_fs_label$completion_fs == "positive"] <- 1
-gpt_fs_label$completion_fs[gpt_fs_label$completion_fs == "negative"] <- 0
-gpt_fs_label$completion_fs <- as.numeric(gpt_fs_label$completion_fs)
-
-################################################################################
-### Validierung der unterschiedlichen Methoden
+### Validierung der konventionellen Methoden
 ################################################################################
 
 #------------------------------------------------------------------------------#
@@ -523,6 +345,229 @@ bing_label$diff[bing_label$diff == 1] <- "falsch-negativ"
 bing_valid <- bing_label %>% group_by(diff) %>% count()
 bing_valid$n_perc <- bing_valid$n / sum(bing_valid$n) * 100
 bing_valid
+
+################################################################################
+### Daten laden für GPT Ansätze
+################################################################################
+
+# Gelabelte Tweets laden
+data_labeled <- read.csv("tweets_aapl_labeled.csv")
+
+# Datensatz als Tibble formatieren
+data_labeled <- as_tibble(data_labeled)
+
+################################################################################
+### Bereinigung der Daten für GPT Ansätze
+################################################################################
+
+# Nicht benötigte Spalten entfernen
+data_labeled <- data_labeled %>% select(c("X_unit_id", "text", "sentiment"))
+
+# ID und Sentiment Spalte umbenennen
+colnames(data_labeled)[which(colnames(data_labeled) == "X_unit_id")] <- "ID"
+colnames(data_labeled)[which(colnames(data_labeled) == "sentiment")] <- "label"
+
+# Sprachermittlung der Posts
+data_labeled$language <- detect_language(data_labeled$text, plain_text = TRUE)
+
+# Englischsprachige Posts herausfiltern
+data_labeled <- data_labeled %>% filter(language == "en")
+data_labeled <- select(data_labeled, -language)
+
+# Nur klar poitive oder neaative Kategorisierungen herausfiltern
+data_labeled <- data_labeled[grepl("1|5", data_labeled$label), ]
+
+# Kategorisierung in "1 = positiv" und "0 = negativ" umbenennen
+data_labeled$label <- gsub("1", "0", data_labeled$label)
+data_labeled$label <- gsub("5", "1", data_labeled$label)
+data_labeled$label <- as.numeric(data_labeled$label)
+
+# Anzahl der manuell gelabelten Sentiments zählen
+data_labeled %>% group_by(label) %>% count()
+
+################################################################################
+### Sentiment Analyse mit GPT
+################################################################################
+
+#------------------------------------------------------------------------------#
+# OpenAI API und Prompt-Funktion einrichten
+#------------------------------------------------------------------------------#
+
+# OpenAI API Key definieren
+api_key <- "HIER KEY EINFÜGEN"
+
+# Prompt Funktion erstellen
+ask_gpt <- function(prompt) {
+  response <- POST(url = "https://api.openai.com/v1/chat/completions",
+                   add_headers(Authorization = paste("Bearer", api_key)),
+                   content_type_json(),
+                   encode = "json",
+                   body = list(model = "gpt-3.5-turbo",
+                               max_tokens = 10,
+                               temperature = 1,
+                               messages = list(list(role = "user",
+                                                    content = prompt
+                               ))
+                   )
+  )
+
+  # Falls Completion = 0 -> "Keine Antwort von API"
+  if (!is.null(content(response)$choices) &&
+      length(content(response)$choices) > 0) {
+    str_trim(content(response)$choices[[1]]$message$content)
+  } else {
+    # Text, falls Completion = 0
+    "Keine Antwort von API"
+  }
+}
+
+#------------------------------------------------------------------------------#
+# GPT (0S)
+#------------------------------------------------------------------------------#
+
+# Prompt definieren
+prompt_0s <- paste("The following tweet contains an opinion on a stock, a company, a product or the market. Classify the tweet into positive or negative. Only return positive or negative.",
+                   "Tweet about AAPL:", sep = "\n")
+
+# Tabelle mit Prompts erstellen
+gpt_sentiments <- data_labeled
+gpt_sentiments$prompt_0s <- paste(paste(prompt_0s, gpt_sentiments$text), 
+                                  "Sentiment:", sep = "\n")
+
+# Leere Spalte für GPT Klassifikation erstellen
+gpt_sentiments$completion_0s <- NA
+
+# Jeden Post mit GPT klassifizieren
+for (i in 1:length(gpt_sentiments$prompt_0s)) {
+  # Completion als Character speichern
+  compl <- as.character(ask_gpt(gpt_sentiments$prompt_0s[i]))
+  # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
+  print(paste(i, compl))
+  # Completion im Data Frame speichern
+  gpt_sentiments$completion_0s[i] <- compl
+}
+
+# Format der Completions anpassen
+gpt_sentiments$completion_0s <- tolower(gpt_sentiments$completion_0s)
+
+# Datensatz mit Completions speichern
+write_csv(gpt_sentiments, "gpt_sentiments_labeled_temp_10_0s.csv")
+
+# Art der Completions anschauen
+unique(gpt_sentiments$completion_0s)
+
+# Positive und negative Klassifikationen herausfiltern
+gpt_0s_label <- gpt_sentiments %>% select(c("ID", "label", "completion_0s"))
+gpt_0s_label <- gpt_0s_label %>% 
+  filter(completion_0s %in% c("positive", "negative"))
+
+# Positive = 1, Negative = 0
+gpt_0s_label$completion_0s[gpt_0s_label$completion_0s == "positive"] <- 1
+gpt_0s_label$completion_0s[gpt_0s_label$completion_0s == "negative"] <- 0
+gpt_0s_label$completion_0s <- as.numeric(gpt_0s_label$completion_0s)
+
+#------------------------------------------------------------------------------#
+# GPT (1S)
+#------------------------------------------------------------------------------#
+
+# Prompt definieren
+prompt_1s <- paste("The following tweet contains an opinion on a stock, a company, a product or the market. Classify the tweet into positive or negative. Only return positive or negative.",
+                   "Tweet 1 about AAPL: I am bullish on Apple.",
+                   "Sentiment: positive",
+                   "##",
+                   "Tweet 2 about AAPL:",
+                   sep = "\n")
+
+# Spalte mit Prompts erstellen
+gpt_sentiments$prompt_1s <- paste(paste(prompt_1s, gpt_sentiments$text), 
+                                  "Sentiment:", sep = "\n")
+
+# Leere Spalte für GPT Klassifikation erstellen
+gpt_sentiments$completion_1s <- NA
+
+# Jeden Post mit GPT klassifizieren
+for (i in 1:length(gpt_sentiments$prompt_1s)) {
+  # Completion als Character speichern
+  compl <- as.character(ask_gpt(gpt_sentiments$prompt_1s[i]))
+  # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
+  print(paste(i, compl))
+  # Completion im Data Frame speichern
+  gpt_sentiments$completion_1s[i] <- compl
+}
+
+# Format der Completions anpassen
+gpt_sentiments$completion_1s <- tolower(gpt_sentiments$completion_1s)
+
+# Datensatz mit Completions speichern
+# write_csv(gpt_sentiments, "gpt_sentiments_labeled_temp_00_1s.csv")
+
+# Art der Completions anschauen
+unique(gpt_sentiments$completion_1s)
+
+# Positive und negative Klassifikationen herausfiltern
+gpt_1s_label <- gpt_sentiments %>% select(c("ID", "label", "completion_1s"))
+gpt_1s_label <- gpt_1s_label %>% 
+  filter(completion_1s %in% c("positive", "negative"))
+
+# Positive = 1, Negative = 0
+gpt_1s_label$completion_1s[gpt_1s_label$completion_1s == "positive"] <- 1
+gpt_1s_label$completion_1s[gpt_1s_label$completion_1s == "negative"] <- 0
+gpt_1s_label$completion_1s <- as.numeric(gpt_1s_label$completion_1s)
+
+#------------------------------------------------------------------------------#
+# GPT (FS)
+#------------------------------------------------------------------------------#
+
+# Prompt definieren
+prompt_fs <- paste("The following tweet contains an opinion on a stock, a company, a product or the market. Classify the tweet into positive or negative. Only return positive or negative.",
+                   "Tweet 1 about AAPL: I am bullish on Apple.",
+                   "Sentiment: positive",
+                   "##",
+                   "Tweet 2 about AAPL: I hate the new iPhone 14.",
+                   "Sentiment: negative",
+                   "##",
+                   "Tweet 3 about AAPL:",
+                   sep = "\n")
+
+# Spalte mit Prompts erstellen
+gpt_sentiments$prompt_fs <- paste(paste(prompt_fs, gpt_sentiments$text), 
+                                  "Sentiment:", sep = "\n")
+
+# Leere Spalte für GPT Klassifikation erstellen
+gpt_sentiments$completion_fs <- NA
+
+# Jeden Post mit GPT klassifizieren
+for (i in 1:length(gpt_sentiments$prompt_fs)) {
+  # Completion als Character speichern
+  compl <- as.character(ask_gpt(gpt_sentiments$prompt_fs[i]))
+  # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
+  print(paste(i, compl))
+  # Completion im Data Frame speichern
+  gpt_sentiments$completion_fs[i] <- compl
+}
+
+# Format der Completions anpassen
+gpt_sentiments$completion_fs <- tolower(gpt_sentiments$completion_fs)
+
+# Datensatz mit Completions speichern
+# write_csv(gpt_sentiments, "gpt_sentiments_labeled_temp_00_fs.csv")
+
+# Art der Completions anschauen
+unique(gpt_sentiments$completion_fs)
+
+# Positive und negative Klassifikationen herausfiltern
+gpt_fs_label <- gpt_sentiments %>% select(c("ID", "label", "completion_fs"))
+gpt_fs_label <- gpt_fs_label %>% 
+  filter(completion_fs %in% c("positive", "negative"))
+
+# Positive = 1, Negative = 0
+gpt_fs_label$completion_fs[gpt_fs_label$completion_fs == "positive"] <- 1
+gpt_fs_label$completion_fs[gpt_fs_label$completion_fs == "negative"] <- 0
+gpt_fs_label$completion_fs <- as.numeric(gpt_fs_label$completion_fs)
+
+################################################################################
+### Validierung der GPT Ansätze
+################################################################################
 
 #------------------------------------------------------------------------------#
 # GPT (0S) Validierung
