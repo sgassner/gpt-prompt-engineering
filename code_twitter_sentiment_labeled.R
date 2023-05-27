@@ -403,7 +403,7 @@ ask_gpt <- function(prompt) {
                    content_type_json(),
                    encode = "json",
                    body = list(model = "gpt-3.5-turbo",
-                               max_tokens = 10,
+                               max_tokens = 0,
                                temperature = 1,
                                messages = list(list(role = "user",
                                                     content = prompt
@@ -451,7 +451,7 @@ for (i in 1:length(gpt_sentiments$prompt_0s)) {
 gpt_sentiments$completion_0s <- tolower(gpt_sentiments$completion_0s)
 
 # Datensatz mit Completions speichern
-write_csv(gpt_sentiments, "gpt_sentiments_labeled_temp_10_0s.csv")
+# write_csv(gpt_sentiments, "gpt_sentiments_labeled_temp_00_0s.csv")
 
 # Art der Completions anschauen
 unique(gpt_sentiments$completion_0s)
