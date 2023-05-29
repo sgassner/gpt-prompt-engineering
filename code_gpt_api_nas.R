@@ -69,7 +69,7 @@ interruptor <- function(FUN, args, time.limit) {
 #------------------------------------------------------------------------------#
 
 # Inputdaten öffnen, kategorisieren & wieder speichern
-for (i in 1:1) {
+for (i in 1:100) {
   
   # Dateiname der Inputdaten
   filename_input <- paste0("input_data_gpt_", i, ".csv")
