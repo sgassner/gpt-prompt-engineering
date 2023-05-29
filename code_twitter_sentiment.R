@@ -424,10 +424,19 @@ data_gpt$prompt <- paste(prompt_task,
 # Spalte für GPT Klassifikation erstellen
 data_gpt$completion <- NA
 
-# Datensatz mit relevanten Spalten für GPT speichern
+# Relevante Spalten für GPT auswählen
 data_gpt <- data_gpt %>% select(c("tweet_id", "post_date","prompt", 
                                   "completion"))
-write_csv(data_gpt, "input_data_gpt.csv")
+
+# Inputdaten in 100 kleinere Data Frames aufsplitten
+split_data <- split(data_gpt, 
+                    rep(1:100, length.out = nrow(data_gpt)))
+
+# Input Data Frames speichern
+for (i in 1:100) {
+  filename <- paste0("input_data_gpt_", i, ".csv")
+  write.csv(split_data[[i]], file = filename, row.names = FALSE)
+}
 
 # Die Analyse mit GPT wird mit einem anderen Skript auf dem NAS durchgeführt
 # Siehe R-Skript: code_gpt_api_nas.R
@@ -436,8 +445,21 @@ write_csv(data_gpt, "input_data_gpt.csv")
 # GPT Output Datensatz mit Completions laden
 #------------------------------------------------------------------------------#
 
-# Risk-free Rate Daten laden
-gpt_sentiments <- read.csv("output_data_gpt.csv") 
+# Leeren Dataframe erstellen, um Outputdaten zu laden
+gpt_sentiments <- data.frame()
+
+# Loop um alle Outputdaten zu öffnen und zu verbinden
+for (i in 1:100) {
+  
+  # Dateinamen definieren
+  filename <- paste0("output_data_gpt_", i, ".csv")
+  
+  # CSV der Outputdaten laden
+  df <- read.csv(filename)
+  
+  # Zu einem Dataframe kombinieren
+  gpt_sentiments <- rbind(gpt_sentiments, df)
+}
 
 # Format der Completions anpassen
 gpt_sentiments$completion <- tolower(gpt_sentiments$completion)
@@ -677,15 +699,6 @@ stargazer(ols_bing_list, type="text", digits = 4)
 #------------------------------------------------------------------------------#
 # GPT + CAPM Regressionen
 #------------------------------------------------------------------------------#
-
-
-
-
-
-
-
-
-
 
 
 
