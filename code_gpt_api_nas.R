@@ -16,16 +16,11 @@ library(stringr)
 library(R.utils) # für Zeitlimit der Prompts
 
 #------------------------------------------------------------------------------#
-# Datensatz mit Prompts laden
-#------------------------------------------------------------------------------#
-input_data_gpt <- read.csv("input_data_gpt.csv")
-
-#------------------------------------------------------------------------------#
 # OpenAI API und Prompt-Funktion einrichten
 #------------------------------------------------------------------------------#
 
 # OpenAI API Key definieren
-api_key <- "KEY"
+api_key <- "HIER KEY EINFÜGEN"
 
 # Prompt Funktion erstellen
 ask_gpt <- function(prompt) {
@@ -65,7 +60,7 @@ interruptor <- function(FUN, args, time.limit) {
   }, error = function(e) {
     "Zeitlimit erreicht"
   })
-
+  
   return(results)
 }
 
@@ -73,24 +68,36 @@ interruptor <- function(FUN, args, time.limit) {
 # Sentiment Analyse mit GPT
 #------------------------------------------------------------------------------#
 
-# Jeden Post mit GPT klassifizieren
-for (i in 1:length(input_data_gpt$prompt)) {
-  # Completion als Character speichern (Zeitlimit = 5 Sekunden)
-  compl <- as.character(interruptor(FUN = ask_gpt, 
-                                    args = input_data_gpt$prompt[i],
-                                    time.limit = 5))
-  # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
-  print(paste(i, compl))
-  # Completion im Data Frame speichern
-  input_data_gpt$completion[i] <- compl
+# Inputdaten öffnen, kategorisieren & wieder speichern
+for (i in 1:1) {
+  
+  # Dateiname der Inputdaten
+  filename_input <- paste0("input_data_gpt_", i, ".csv")
+  
+  # Inputdaten laden
+  df <- read.csv(filename_input)
+  
+  # Jeden Post mit GPT klassifizieren
+  for (j in 1:length(df$prompt)) {
+    
+    # Completion als Character speichern (Zeitlimit = 5 Sekunden)
+    compl <- as.character(interruptor(FUN = ask_gpt, 
+                                      args = df$prompt[j],
+                                      time.limit = 5))
+    
+    # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
+    print(paste(i, j, compl, Sys.time()))
+    
+    # Completion im Data Frame speichern
+    df$completion[j] <- compl
+  }
+  
+  # Dateiname der Outputdaten
+  filename_output <- paste0("output_data_gpt_", i, ".csv")
+  
+  # Output als CSV speichern
+  write.csv(df, filename_output)
 }
-
-#------------------------------------------------------------------------------#
-# Kategorisierten Datensatz speicher
-#------------------------------------------------------------------------------#
-
-# CSV erstellen
-write.csv(input_data_gpt, "output_data_gpt.csv")
 
 # Die weitere Bearbeitung und Analyse erfolgt lokal
 # Siehe R-Skript: code_twitter_sentiment.R
