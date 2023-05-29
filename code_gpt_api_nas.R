@@ -77,7 +77,7 @@ for (i in 1:100) {
   # Inputdaten laden
   df <- read.csv(filename_input)
   
-  # Jeden Post mit GPT klassifizieren
+  # Jeden Post mit GPT kategorisieren
   for (j in 1:length(df$prompt)) {
     
     # Completion als Character speichern (Zeitlimit = 5 Sekunden)
@@ -85,7 +85,7 @@ for (i in 1:100) {
                                       args = df$prompt[j],
                                       time.limit = 5))
     
-    # Zeilennummer und Completion anzeigen (Fortschrittsanzeige)
+    # Fortschrittsanzeige (Inputdaten i, Zeile j, Completion j & Zeit)
     print(paste(i, j, compl, Sys.time()))
     
     # Completion im Data Frame speichern
