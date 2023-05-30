@@ -425,12 +425,13 @@ data_gpt$prompt <- paste(prompt_task,
 data_gpt$completion <- NA
 
 # Relevante Spalten für GPT auswählen
-data_gpt <- data_gpt %>% select(c("tweet_id", "post_date","prompt", 
-                                  "completion"))
+data_gpt <- data_gpt %>% select(c("tweet_id", "ticker_symbol", "post_date",
+                                  "prompt", "completion"))
 
 # Inputdaten in 100 kleinere Data Frames aufsplitten
 split_data <- split(data_gpt, 
-                    rep(1:100, length.out = nrow(data_gpt)))
+                    rep(1:100, each = ceiling(nrow(data_gpt) / 100), 
+                        length.out = nrow(data_gpt)))
 
 # Input Data Frames speichern
 for (i in 1:100) {
@@ -465,14 +466,46 @@ for (i in 1:100) {
 gpt_sentiments$completion <- tolower(gpt_sentiments$completion)
 
 # Art der Completions anschauen
-unique(gpt_sentiments$completion)
+gpt_sentiments %>% group_by(completion) %>% count() %>% arrange(desc(n))
 
 # Positive und negative Klassifikationen herausfiltern
-gpt_label <- gpt_sentiments %>% select(c("tweet_ID", "post_date","completion"))
+gpt_label <- gpt_sentiments %>% select(c("tweet_id", "ticker_symbol", 
+                                         "post_date","completion"))
 gpt_label <- gpt_label %>% 
   filter(completion %in% c("positive", "negative", "neutral"))
 
-# Positive = 1, Neutral = 0, Negative = -1
+# Sentiment Score für jedes Datum und jede Aktie berechnen
+gpt_sentiment_score <- gpt_label %>% 
+  group_by(post_date, ticker_symbol, completion) %>% count()
+
+# In wide-format konvertieren
+gpt_sentiment_score_wide <- gpt_sentiment_score %>% 
+  pivot_wider(names_from = completion, values_from = n)
+
+# NA's mit 0 ersetzen
+gpt_sentiment_score_wide[is.na(gpt_sentiment_score_wide)] <- 0
+
+# Summe aller Sentiment-Matches berechnen
+gpt_sentiment_score_wide$total <- rowSums(gpt_sentiment_score_wide[,3:5])
+
+# Anteil der Sentiments für jedes Datum und jede Aktie in Prozent
+gpt_sentiment_score_wide_perc <- gpt_sentiment_score_wide[,1:5]
+for (i in unique(gpt_label$completion)) {
+  gpt_sentiment_score_wide_perc[[i]] <- 
+    gpt_sentiment_score_wide[[i]] / gpt_sentiment_score_wide$total * 100
+}
+
+# In long-format zurückkonvertieren
+gpt_sentiment_score_perc <- pivot_longer(gpt_sentiment_score_wide_perc, 
+                                         cols = unique(gpt_label$completion), 
+                                         names_to = "completion", 
+                                         values_to = "n")
+
+# Liste der Sentiment-Scores nach Aktie erstellen
+gpt_list <- split(gpt_sentiment_score_perc, 
+                  gpt_sentiment_score_perc$ticker_symbol)
+gpt_list_wide <- split(gpt_sentiment_score_wide_perc, 
+                       gpt_sentiment_score_wide_perc$ticker_symbol)
 
 
 ################################################################################
@@ -700,6 +733,39 @@ stargazer(ols_bing_list, type="text", digits = 4)
 # GPT + CAPM Regressionen
 #------------------------------------------------------------------------------#
 
+# Liste für Aktienrenditen und GPT Sentiment Scores erstellen
+return_gpt_list <- list()
 
+# Aktienrenditen und GPT Sentiment Scores in Liste zusammenführen
+for (symbol in symbols) {
+  
+  # Renditen und L&M Scores herziehen
+  return_df <- lag(return_list[[symbol]]) # Time-Lag = 1 Tag
+  gpt_df <- gpt_list_wide[[symbol]]
+  
+  # Renditen und GPT Scores herziehen in Liste speichern
+  return_gpt_list[[symbol]] <- merge(gpt_df, return_df, by.x = "post_date", 
+                                     by.y = "day_date")
+  
+  # Data Frames aus Memory entfernen
+  rm(gpt_df, return_df)
+}
 
+# OLS Formel definieren
+formula <- excess_return ~ market_excess_return + positive
 
+# Liste erstellen um Resultate zu speichern
+ols_gpt_list <- list()
+
+# L&M OLS Modelle für alle Aktientitel mit Loop erstellen
+for (symbol in symbols) {
+  ols_gpt_list[[symbol]] <- lm(formula, data = return_gpt_list[[symbol]])
+}
+
+# OLS Resultate für alle Titel anzeigen
+stargazer(ols_gpt_list, type="text", digits = 4)
+# stargazer(ols_gpt_list, type="html", digits = 4)
+
+#------------------------------------------------------------------------------#
+# Ende des Skripts
+#------------------------------------------------------------------------------#
