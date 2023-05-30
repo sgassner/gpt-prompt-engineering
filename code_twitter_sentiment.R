@@ -426,6 +426,10 @@ data_gpt$completion <- NA
 data_gpt <- data_gpt %>% select(c("tweet_id", "ticker_symbol", "post_date",
                                   "prompt", "completion"))
 
+# Zufällig 1 Mio. Tweets herausfiltern
+set.seed(42)
+data_gpt <- data_gpt %>% sample_n(1000000)
+
 # Inputdaten in 100 kleinere Data Frames aufsplitten
 split_data <- split(data_gpt, 
                     rep(1:100, each = ceiling(nrow(data_gpt) / 100), 
