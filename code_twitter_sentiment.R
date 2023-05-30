@@ -238,11 +238,10 @@ lm_list <- split(lm_sentiment_score_perc,
 lm_list_wide <- split(lm_sentiment_score_wide_perc, 
                       lm_sentiment_score_wide_perc$ticker_symbol)
 
-# Beispielplot für L&M mit Tesla erstellen
+# Beispielplot für L&M mit Apple erstellen
 ggplot(lm_list[["AAPL"]], aes(x = post_date, y = n, group = sentiment)) +
   geom_line(aes(color = sentiment)) +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
-  # ylim(0, 100) +
   labs(title = "L&M Sentiments der Tweets mit Bezug zu Apple (AAPL)", 
        x = "Datum", 
        y = "Anteil der Stimmungen (in %)") +
@@ -294,11 +293,10 @@ nrc_list <- split(nrc_sentiment_score_perc,
 nrc_list_wide <- split(nrc_sentiment_score_wide_perc, 
                        nrc_sentiment_score_wide_perc$ticker_symbol)
 
-# Beispielplot für NRC mit Tesla erstellen
+# Beispielplot für NRC mit Apple erstellen
 ggplot(nrc_list[["AAPL"]], aes(x = post_date, y = n, group = sentiment)) +
   geom_line(aes(color = sentiment)) +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
-  # ylim(0, 45) +
   labs(title = "NRC Sentiments der Tweets mit Bezug zu Apple (AAPL)", 
        x = "Datum", 
        y = "Anteil der Stimmungen (in %)") +
@@ -329,7 +327,7 @@ afinn_sentiment_score$sentiment_score <-
 # Liste der Sentiment-Scores nach Aktie erstellen
 afinn_list <- split(afinn_sentiment_score, afinn_sentiment_score$ticker_symbol)
 
-# Beispielplot für AFINN mit Tesla erstellen
+# Beispielplot für AFINN mit Apple erstellen
 ggplot(afinn_list[["AAPL"]], aes(x = post_date, y = sentiment_score)) +
   geom_line() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
@@ -350,7 +348,7 @@ bing_dict <- get_sentiments("bing")
 # Stemming des BING Dictionary
 bing_dict <- bing_dict %>% mutate(word = wordStem(word))
 
-# Tokens mit AFINN Dictionary verbinden
+# Tokens mit BING Dictionary verbinden
 bing_nlp <- data_twitter_tokens %>% inner_join(bing_dict, by = "word")
 
 # Sentiment Score für jedes Datum und jede Aktie berechnen
@@ -383,10 +381,10 @@ bing_list <- split(bing_sentiment_score_perc,
 bing_list_wide <- split(bing_sentiment_score_wide_perc, 
                         bing_sentiment_score_wide_perc$ticker_symbol)
 
-# Anteil positiver Posts für TSLA herausfiltern
+# Anteil positiver Posts für Apple herausfiltern
 bing_AAPL_pos <- bing_list[["AAPL"]] %>% filter(sentiment == "positive")
 
-# Beispielplot für BING mit Tesla erstellen
+# Beispielplot für BING mit Apple erstellen
 ggplot(bing_AAPL_pos, aes(x = post_date, y = n)) +
   geom_line() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
@@ -464,6 +462,7 @@ for (i in 1:100) {
 
 # Format der Completions anpassen
 gpt_sentiments$completion <- tolower(gpt_sentiments$completion)
+gpt_sentiments$post_date <- as.Date(gpt_sentiments$post_date, "%Y-%m-%d")
 
 # Art der Completions anschauen
 gpt_sentiments %>% group_by(completion) %>% count() %>% arrange(desc(n))
@@ -507,6 +506,15 @@ gpt_list <- split(gpt_sentiment_score_perc,
 gpt_list_wide <- split(gpt_sentiment_score_wide_perc, 
                        gpt_sentiment_score_wide_perc$ticker_symbol)
 
+# Beispielplot für L&M mit Apple erstellen
+ggplot(gpt_list[["AAPL"]], aes(x = post_date, y = n, group = completion)) +
+  geom_line(aes(color = completion)) +
+  scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
+  # ylim(0, 100) +
+  labs(title = "GPT (0S) Sentiments der Tweets mit Bezug zu Apple (AAPL)", 
+       x = "Datum", 
+       y = "Anteil der Stimmungen (in %)") +
+  theme(text = element_text(size = 16))
 
 ################################################################################
 ### Zusammenhang von Stimmung und Aktienperformance
@@ -739,7 +747,7 @@ return_gpt_list <- list()
 # Aktienrenditen und GPT Sentiment Scores in Liste zusammenführen
 for (symbol in symbols) {
   
-  # Renditen und L&M Scores herziehen
+  # Renditen und GPT Scores herziehen
   return_df <- lag(return_list[[symbol]]) # Time-Lag = 1 Tag
   gpt_df <- gpt_list_wide[[symbol]]
   
@@ -757,7 +765,7 @@ formula <- excess_return ~ market_excess_return + positive
 # Liste erstellen um Resultate zu speichern
 ols_gpt_list <- list()
 
-# L&M OLS Modelle für alle Aktientitel mit Loop erstellen
+# GPT OLS Modelle für alle Aktientitel mit Loop erstellen
 for (symbol in symbols) {
   ols_gpt_list[[symbol]] <- lm(formula, data = return_gpt_list[[symbol]])
 }
