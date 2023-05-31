@@ -437,8 +437,10 @@ split_data <- split(data_gpt,
 
 # Input Data Frames speichern
 for (i in 1:100) {
+  setwd("~/Documents/R/MA/input_gpt")
   filename <- paste0("input_data_gpt_", i, ".csv")
   write.csv(split_data[[i]], file = filename, row.names = FALSE)
+  setwd("~/Documents/R/MA")
 }
 
 # Die Analyse mit GPT wird mit einem anderen Skript auf dem NAS durchgeführt
@@ -454,6 +456,9 @@ gpt_sentiments <- data.frame()
 # Loop um alle Outputdaten zu öffnen und zu verbinden
 for (i in 1:100) {
   
+  # Ordner mit Outputdaten definieren
+  setwd("~/Documents/R/MA/output_gpt")
+  
   # Dateinamen definieren
   filename <- paste0("output_data_gpt_", i, ".csv")
   
@@ -462,11 +467,20 @@ for (i in 1:100) {
   
   # Zu einem Dataframe kombinieren
   gpt_sentiments <- rbind(gpt_sentiments, df)
+  
+  # WD zurücksetzen
+  setwd("~/Documents/R/MA")
 }
+
+# Indexspalte entfernen
+gpt_sentiments <- gpt_sentiments %>% select(-X)
 
 # Format der Completions anpassen
 gpt_sentiments$completion <- tolower(gpt_sentiments$completion)
+
+# Aufsteigend nach Datum sortieren
 gpt_sentiments$post_date <- as.Date(gpt_sentiments$post_date, "%Y-%m-%d")
+gpt_sentiments <- gpt_sentiments %>% arrange(post_date)
 
 # Art der Completions anschauen
 gpt_sentiments %>% group_by(completion) %>% count() %>% arrange(desc(n))
@@ -510,11 +524,10 @@ gpt_list <- split(gpt_sentiment_score_perc,
 gpt_list_wide <- split(gpt_sentiment_score_wide_perc, 
                        gpt_sentiment_score_wide_perc$ticker_symbol)
 
-# Beispielplot für L&M mit Apple erstellen
+# Beispielplot für GPT mit Apple erstellen
 ggplot(gpt_list[["AAPL"]], aes(x = post_date, y = n, group = completion)) +
   geom_line(aes(color = completion)) +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") +
-  # ylim(0, 100) +
   labs(title = "GPT (0S) Sentiments der Tweets mit Bezug zu Apple (AAPL)", 
        x = "Datum", 
        y = "Anteil der Stimmungen (in %)") +
@@ -752,7 +765,7 @@ return_gpt_list <- list()
 for (symbol in symbols) {
   
   # Renditen und GPT Scores herziehen
-  return_df <- lag(return_list[[symbol]]) # Time-Lag = 1 Tag
+  return_df <- lag(return_list[[symbol]], 1) # Time-Lag = 1 Tag
   gpt_df <- gpt_list_wide[[symbol]]
   
   # Renditen und GPT Scores herziehen in Liste speichern
@@ -764,7 +777,7 @@ for (symbol in symbols) {
 }
 
 # OLS Formel definieren
-formula <- excess_return ~ market_excess_return + positive
+formula <- excess_return ~ market_excess_return + positive + negative
 
 # Liste erstellen um Resultate zu speichern
 ols_gpt_list <- list()
