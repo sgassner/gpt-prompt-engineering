@@ -103,7 +103,7 @@ for (i in 1:100) {
 # Zusammenhang von Stimmung und Aktienperformance
 #------------------------------------------------------------------------------#
 
-# Die weitere Bearbeitung und Analyse erfolgt wieder lokal
+# Die weitere Bearbeitung und Analyse erfolgt wieder lokal.
 # Siehe R-Skript: code_twitter_sentiment.R
 
 #------------------------------------------------------------------------------#
