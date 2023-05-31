@@ -637,3 +637,7 @@ gpt_fs_label$diff[gpt_fs_label$diff == 1] <- "falsch-negativ"
 gpt_fs_valid <- gpt_fs_label %>% group_by(diff) %>% count()
 gpt_fs_valid$n_perc <- gpt_fs_valid$n / sum(gpt_fs_valid$n) * 100
 gpt_fs_valid
+
+#------------------------------------------------------------------------------#
+# Ende des Skripts
+#------------------------------------------------------------------------------#
