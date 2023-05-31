@@ -443,11 +443,16 @@ for (i in 1:100) {
   setwd("~/Documents/R/MA")
 }
 
-# Die Analyse mit GPT wird mit einem anderen Skript auf dem NAS durchgeführt
-# Siehe R-Skript: code_gpt_api_nas.R
+#------------------------------------------------------------------------------#
+# Kategorisierung der Tweets mit GPT
+#------------------------------------------------------------------------------#
+
+# Die Kategorisierung mit GPT erfolgt durch ein anderes Skript.
+# Aufgrund der langen Laufzeit wird dieses auf einem Server ausgeführt.
+# Siehe R-Skript: code_gpt_api_server.R
 
 #------------------------------------------------------------------------------#
-# GPT Output Datensatz mit Completions laden
+# GPT Output Datensatz des Servers mit Completions laden
 #------------------------------------------------------------------------------#
 
 # Leeren Dataframe erstellen, um Outputdaten zu laden
