@@ -452,7 +452,7 @@ for (i in 1:100) {
 # Siehe R-Skript: code_gpt_api_server.R
 
 #------------------------------------------------------------------------------#
-# GPT Output Datensatz des Servers mit Completions laden
+# GPT Output Datensatz mit Completions laden
 #------------------------------------------------------------------------------#
 
 # Leeren Dataframe erstellen, um Outputdaten zu laden
@@ -488,7 +488,11 @@ gpt_sentiments$post_date <- as.Date(gpt_sentiments$post_date, "%Y-%m-%d")
 gpt_sentiments <- gpt_sentiments %>% arrange(post_date)
 
 # Art der Completions anschauen
-gpt_sentiments %>% group_by(completion) %>% count() %>% arrange(desc(n))
+gpt_sentiments_share <- gpt_sentiments %>% 
+  group_by(completion) %>% count() %>% arrange(desc(n))
+gpt_sentiments_share$perc <- 
+  round((100 / nrow(gpt_sentiments) * gpt_sentiments_share$n), 2)
+gpt_sentiments_share
 
 # Positive und negative Klassifikationen herausfiltern
 gpt_label <- gpt_sentiments %>% select(c("tweet_id", "ticker_symbol", 
