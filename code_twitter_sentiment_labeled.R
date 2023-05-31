@@ -18,7 +18,6 @@ library(tidytext) # NLP Funktionen
 library(textdata) # NLP Funktionen
 library(SnowballC) # Stemming
 library(zoo)
-library(R.utils) # für Zeitlimit der Prompts
 
 ################################################################################
 ### Daten laden für konventionelle Methoden
