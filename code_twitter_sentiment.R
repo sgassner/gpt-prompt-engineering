@@ -11,14 +11,17 @@
 setwd("~/Documents/R/MA")
 
 # Packages laden
-library(tidyverse)
+library(tidyverse) # Data Handling
 library(cld2) # Sprachermittlung der Posts
 library(tidytext) # NLP Funktionen
 library(textdata) # NLP Funktionen
 library(SnowballC) # Stemming
 library(corrplot) # Korrelationsplot
 library(stargazer) # für Regressions-Outputs
-library(zoo)
+library(zoo) # Missing Values
+library(lmtest) # Statistische Fehleranalyse
+library(sandwich) # HC Standardfehler
+library(gridExtra) # Zusammenführen von Plots
 
 ################################################################################
 ### Daten laden
@@ -592,6 +595,34 @@ return_list <- data_stocks %>% split(.$ticker_symbol) %>% lapply(return_fun)
 symbols <- c("AAPL", "AMZN", "GOOG", "GOOGL", "MSFT", "TSLA")
 
 #------------------------------------------------------------------------------#
+# CAPM Only Regressionen
+#------------------------------------------------------------------------------#
+
+# OLS Formel definieren
+formula <- excess_return ~ market_excess_return
+
+# Liste erstellen um Resultate zu speichern
+ols_capm_list <- list()
+white_capm_list <- list()
+
+# CAPM für alle Aktientitel mit Loop erstellen
+for (symbol in symbols) {
+  ols_capm <- lm(formula, data = return_list[[symbol]])
+  ols_capm_list[[symbol]] <- ols_capm
+  # White-Standardfehler berechnen
+  white_capm <- coeftest(ols_capm, vcov = vcovHC(ols_capm, type = "HC"))
+  white_capm_list[[symbol]] <- white_capm
+}
+
+# OLS Resultate für alle Titel anzeigen
+stargazer(ols_capm_list, type="text", digits = 4)
+#stargazer(ols_capm_list, type="html", digits = 4)
+
+# White Resultate für alle Titel anzeigen
+stargazer(white_capm_list, type="text", digits = 4)
+#stargazer(white_capm_list, type="html", digits = 4)
+
+#------------------------------------------------------------------------------#
 # L&M + CAPM Regressionen
 #------------------------------------------------------------------------------#
 
@@ -616,27 +647,34 @@ for (symbol in symbols) {
 # Korrelation der L&M Sentiments überprüfen
 lm_cor <- round(cor(lm_sentiment_score_wide_perc[,3:8]), 4)
 lm_cor
-corrplot(lm_cor)
+corrplot(lm_cor, method = "circle",
+         title = "Korrelationsplot L&M-Sentiments", 
+         tl.col = "black")
 
 # OLS Formel definieren
 formula <- excess_return ~ market_excess_return + positive + uncertainty + 
   litigious + constraining + superfluous
-# formula <- return ~ market_excess_return + negative
-
-####### Alle Sentiments
-# positive + negative + uncertainty + litigious + constraining + superfluous
 
 # Liste erstellen um Resultate zu speichern
 ols_lm_list <- list()
+white_lm_list <- list()
 
 # L&M OLS Modelle für alle Aktientitel mit Loop erstellen
 for (symbol in symbols) {
-  ols_lm_list[[symbol]] <- lm(formula, data = return_lm_list[[symbol]])
+  ols_lm <- lm(formula, data = return_lm_list[[symbol]])
+  ols_lm_list[[symbol]] <- ols_lm
+  # White-Standardfehler berechnen
+  white_lm <- coeftest(ols_lm, vcov = vcovHC(ols_lm, type = "HC"))
+  white_lm_list[[symbol]] <- white_lm
 }
 
 # OLS Resultate für alle Titel anzeigen
 stargazer(ols_lm_list, type="text", digits = 4)
 #stargazer(ols_lm_list, type="html", digits = 4)
+
+# White Resultate für alle Titel anzeigen
+stargazer(white_lm_list, type="text", digits = 4)
+#stargazer(white_lm_list, type="html", digits = 4)
 
 #------------------------------------------------------------------------------#
 # NRC + CAPM Regressionen
@@ -663,27 +701,36 @@ for (symbol in symbols) {
 # Korrelation der NRC Sentiments überprüfen
 nrc_cor <- round(cor(nrc_sentiment_score_wide_perc[,3:12]), 4)
 nrc_cor
-corrplot(nrc_cor)
+corrplot(nrc_cor, method = "circle",
+         title = "Korrelationsplot NRC-Sentiments", 
+         tl.col = "black")
+
+
 
 # OLS Formel definieren
 formula <- excess_return ~ market_excess_return + positive + negative + 
   anger + anticipation + disgust + fear + joy + sadness + surprise
 
-####### Alle Sentiments
-# anger + anticipation + disgust + fear + joy + negative + positive + sadness +
-# surprise + trust
-
 # Liste erstellen um Resultate zu speichern
 ols_nrc_list <- list()
+white_nrc_list <- list()
 
 # NRC OLS Modelle für alle Aktientitel mit Loop erstellen
 for (symbol in symbols) {
-  ols_nrc_list[[symbol]] <- lm(formula, data = return_nrc_list[[symbol]])
+  ols_nrc <- lm(formula, data = return_nrc_list[[symbol]])
+  ols_nrc_list[[symbol]] <- ols_nrc
+  # White-Standardfehler berechnen
+  white_nrc <- coeftest(ols_nrc, vcov = vcovHC(ols_nrc, type = "HC"))
+  white_nrc_list[[symbol]] <- white_nrc
 }
 
-# OLS Resultate Tablle anzeigen
+# OLS Resultate für alle Titel anzeigen
 stargazer(ols_nrc_list, type="text", digits = 4)
-# stargazer(ols_nrc_list, type="html", digits = 4)
+#stargazer(ols_lm_list, type="html", digits = 4)
+
+# White Resultate für alle Titel anzeigen
+stargazer(white_nrc_list, type="text", digits = 4)
+#stargazer(white_lm_list, type="html", digits = 4)
 
 #------------------------------------------------------------------------------#
 # AFINN + CAPM Regressionen
@@ -712,15 +759,24 @@ formula <- excess_return ~ market_excess_return + sentiment_score
 
 # Liste erstellen um Resultate zu speichern
 ols_afinn_list <- list()
+white_afinn_list <- list()
 
 # AFINN OLS Modelle für alle Aktientitel mit Loop erstellen
 for (symbol in symbols) {
-  ols_afinn_list[[symbol]] <- lm(formula, data = return_afinn_list[[symbol]])
+  ols_afinn <- lm(formula, data = return_afinn_list[[symbol]])
+  ols_afinn_list[[symbol]] <- ols_afinn
+  # White-Standardfehler berechnen
+  white_afinn <- coeftest(ols_afinn, vcov = vcovHC(ols_afinn, type = "HC"))
+  white_afinn_list[[symbol]] <- white_afinn
 }
 
 # OLS Resultate für alle Titel anzeigen
 stargazer(ols_afinn_list, type="text", digits = 4)
 # stargazer(ols_afinn_list, type="html", digits = 4)
+
+# White Resultate für alle Titel anzeigen
+stargazer(white_afinn_list, type="text", digits = 4)
+#stargazer(white_afinn_list, type="html", digits = 4)
 
 #------------------------------------------------------------------------------#
 # BING + CAPM Regressionen
@@ -728,6 +784,7 @@ stargazer(ols_afinn_list, type="text", digits = 4)
 
 # Liste für Aktienrenditen und BING Sentiment Scores erstellen
 return_bing_list <- list()
+white_bing_list <- list()
 
 # Aktienrenditen und BING Sentiment Scores in Liste zusammenführen
 for (symbol in symbols) {
@@ -746,22 +803,26 @@ for (symbol in symbols) {
 
 # OLS Formel definieren
 formula <- excess_return ~ market_excess_return + positive
-# formula <- return ~ market_excess_return + negative
-
-####### Alle Sentiments
-# positive + negative
 
 # Liste erstellen um Resultate zu speichern
 ols_bing_list <- list()
 
 # NRC OLS Modelle für alle Aktientitel mit Loop erstellen
 for (symbol in symbols) {
-  ols_bing_list[[symbol]] <- lm(formula, data = return_bing_list[[symbol]])
+  ols_bing <- lm(formula, data = return_bing_list[[symbol]])
+  ols_bing_list[[symbol]] <- ols_bing
+  # White-Standardfehler berechnen
+  white_bing <- coeftest(ols_bing, vcov = vcovHC(ols_bing, type = "HC"))
+  white_bing_list[[symbol]] <- white_bing
 }
 
 # OLS Resultate für alle Titel anzeigen
 stargazer(ols_bing_list, type="text", digits = 4)
 # stargazer(ols_bing_list, type="html", digits = 4)
+
+# White Resultate für alle Titel anzeigen
+stargazer(white_bing_list, type="text", digits = 4)
+#stargazer(white_bing_list, type="html", digits = 4)
 
 #------------------------------------------------------------------------------#
 # GPT + CAPM Regressionen
@@ -790,15 +851,121 @@ formula <- excess_return ~ market_excess_return + positive + negative
 
 # Liste erstellen um Resultate zu speichern
 ols_gpt_list <- list()
+white_gpt_list <- list()
 
 # GPT OLS Modelle für alle Aktientitel mit Loop erstellen
 for (symbol in symbols) {
-  ols_gpt_list[[symbol]] <- lm(formula, data = return_gpt_list[[symbol]])
+  ols_gpt <- lm(formula, data = return_gpt_list[[symbol]])
+  ols_gpt_list[[symbol]] <- ols_gpt
+  # White-Standardfehler berechnen
+  white_gpt <- coeftest(ols_gpt, vcov = vcovHC(ols_gpt, type = "HC"))
+  white_gpt_list[[symbol]] <- white_gpt
 }
 
 # OLS Resultate für alle Titel anzeigen
 stargazer(ols_gpt_list, type="text", digits = 4)
 # stargazer(ols_gpt_list, type="html", digits = 4)
+
+# White Resultate für alle Titel anzeigen
+stargazer(white_gpt_list, type="text", digits = 4)
+#stargazer(white_gpt_list, type="html", digits = 4)
+
+#------------------------------------------------------------------------------#
+# Test auf Linearität
+#------------------------------------------------------------------------------#
+
+# Funktion zur Erstellung des Residuenplots
+create_resid_plot <- function(ols_object, stock_name) {
+  residuals <- residuals(ols_object)
+  fitted_values <- ols_object$fitted.values
+  
+  ggplot(data = data.frame(fitted_values, residuals), 
+         aes(x = fitted_values, y = residuals)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
+    xlab("Fitted Values") +
+    ylab("Residuals") +
+    labs(title = stock_name)
+}
+
+# Liste der Plots erstellen
+plots_list <- lapply(seq_along(ols_gpt_list), function(i) {
+  create_resid_plot(ols_gpt_list[[i]], symbols[i])
+})
+
+# 2x3 Raster erstellen
+grid.arrange(grobs = plots_list, ncol = 3, 
+             top = "Residualplots CAPM + GPT (0S)")
+
+#------------------------------------------------------------------------------#
+# Breusch-Pagan-Test auf Heteroskedastizität
+#------------------------------------------------------------------------------#
+
+# Breusch-Pagan Test Funktion erstellen
+test_heteroscedasticity <- function(model_list, model_name) {
+  results <- tibble(Model = character(), BP = numeric(), 
+                    df = numeric(), p_value = numeric())
+  
+  for (i in 1:length(model_list)) {
+    bptest_result <- bptest(model_list[[i]])
+    
+    result_row <- tibble(Model = paste(model_name, i),
+                         BP = bptest_result$statistic,
+                         df = bptest_result$parameter,
+                         p_value = bptest_result$p.value)
+    
+    results <- bind_rows(results, result_row)
+  }
+  
+  return(results)
+}
+
+# Breusch-Pagan Test Resultate für jedes Modell speichern
+capm_bp <- test_heteroscedasticity(ols_capm_list, "CAPM")
+lm_bp <- test_heteroscedasticity(ols_lm_list, "CAPM + L&M")
+nrc_bp <- test_heteroscedasticity(ols_nrc_list, "CAPM + NRC")
+afinn_bp <- test_heteroscedasticity(ols_afinn_list, "CAPM + AFINN")
+bing_bp <- test_heteroscedasticity(ols_bing_list, "CAPM + BING")
+gpt_bp <- test_heteroscedasticity(ols_gpt_list, "CAPM + GPT")
+
+# Breusch-Pagan Test Resultate zusammenführen und anzeigen
+results_bp <- rbind(capm_bp, lm_bp, nrc_bp, afinn_bp, bing_bp, gpt_bp)
+write.csv(results_bp, file = "results_bp.csv", row.names = FALSE)
+print(results_bp, n = 36)
+
+#------------------------------------------------------------------------------#
+# Durbin-Watson-Test auf Autokorrelation
+#------------------------------------------------------------------------------#
+
+# Durbin-Watson-Test Funktion erstellen
+test_autocorrelation <- function(model_list, model_name) {
+  results <- tibble(Model = character(), DW = numeric(), p_value = numeric())
+  
+  for (i in 1:length(model_list)) {
+    dwtest_result <- dwtest(model_list[[i]])
+    
+    result_row <- tibble(Model = paste(model_name, i),
+                         DW = dwtest_result$statistic,
+                         p_value = dwtest_result$p.value)
+    
+    results <- bind_rows(results, result_row)
+  }
+  
+  return(results)
+}
+
+# Durbin-Watson-Test Resultate für jedes Modell speichern
+capm_dw <- test_autocorrelation(ols_capm_list, "CAPM")
+lm_dw <- test_autocorrelation(ols_lm_list, "CAPM + L&M")
+nrc_dw <- test_autocorrelation(ols_nrc_list, "CAPM + NRC")
+afinn_dw <- test_autocorrelation(ols_afinn_list, "CAPM + AFINN")
+bing_dw <- test_autocorrelation(ols_bing_list, "CAPM + BING")
+gpt_dw <- test_autocorrelation(ols_gpt_list, "CAPM + GPT")
+
+# Breusch-Pagan Test Resultate zusammenführen und anzeigen
+results_dw <- rbind(capm_dw, lm_dw, nrc_dw, afinn_dw, bing_dw, gpt_dw)
+write.csv(results_dw, file = "results_dw.csv", row.names = FALSE)
+print(results_dw, n = 36)
 
 #------------------------------------------------------------------------------#
 # Ende des Skripts
