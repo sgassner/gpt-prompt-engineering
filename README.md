@@ -29,7 +29,7 @@ Dieses Projekt verwendet die R-Version 4.3.0 in RStudio 2023.03.0 Build 386. Hie
 - `textdata`: NLP Funktionen
 - `SnowballC`: Stemming
 - `corrplot`: Korrelationsplots
-- `stargazer`: Regressions-Outputs
+- `stargazer`: Regressionstabellen
 - `zoo`: Umgang mit Missing Values
 - `lmtest`: Statistische Fehleranalyse
 - `sandwich`: Heteroskedastie-Robuste Standardfehler
