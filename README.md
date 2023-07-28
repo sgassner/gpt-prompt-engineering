@@ -21,7 +21,7 @@ Diese Arbeit untersucht, inwiefern sich die Stimmung von Anlegerinnen und Anlege
 
 ## Software und Bibliotheken
 
-Dieses Projekt verwendet die R-Version 4.3.0. Hier sind die Bibliotheken, die in diesem Projekt verwendet wurden und deren Verwendungszweck:
+Dieses Projekt verwendet die R-Version 4.3.0 in RStudio 2023.03.0 Build 386. Hier sind die Bibliotheken, die in diesem Projekt verwendet wurden und deren Verwendungszweck:
 
 - `tidyverse`: Data Handling
 - `cld2`: Sprachermittlung der Posts
