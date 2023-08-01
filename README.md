@@ -1,4 +1,4 @@
-# Projektname: GPT Prompt Engineering zur Kategorisierung der Stimmung von Anlegerinnen und Anlegern
+# GPT Prompt Engineering zur Kategorisierung der Stimmung von Anlegerinnen und Anlegern
 
 Dieses Repository enthält alle Skripts für die Arbeit: "GPT Prompt Engineering zur Kategorisierung der Stimmung von Anlegerinnen und Anlegern". 
 
